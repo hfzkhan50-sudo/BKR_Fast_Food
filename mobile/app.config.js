@@ -2,7 +2,7 @@ export default {
   expo: {
     owner: 'hfzkhans-team',
     name: 'BKR Fast Food Monitor',
-    slug: 'bkr-fast-food-monitor',
+    slug: 'hfz-khan',
     version: '1.0.0',
     android: { package: 'com.bkr.fastfood.monitor' },
     ios: { bundleIdentifier: 'com.bkr.fastfood.monitor' },
