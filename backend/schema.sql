@@ -19,8 +19,8 @@ CREATE TABLE IF NOT EXISTS inventory_items (
 CREATE TABLE IF NOT EXISTS orders (
   order_id SERIAL PRIMARY KEY,
   order_no TEXT NOT NULL UNIQUE,
-  order_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  order_time TIME NOT NULL DEFAULT CURRENT_TIME,
+  order_date DATE NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Karachi')::date,
+  order_time TIME NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Karachi')::time,
   customer_name TEXT NOT NULL DEFAULT '',
   order_type TEXT NOT NULL DEFAULT 'Dine In',
   payment_type TEXT NOT NULL DEFAULT 'Cash',
@@ -34,34 +34,5 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS order_items (
-  order_item_id SERIAL PRIMARY KEY,
-  order_id INTEGER NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE,
-  menu_item_id INTEGER NOT NULL DEFAULT 0,
-  menu_item_name TEXT NOT NULL,
-  quantity INTEGER NOT NULL DEFAULT 1,
-  unit_price NUMERIC(12, 2) NOT NULL DEFAULT 0,
-  line_total NUMERIC(12, 2) NOT NULL DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS stock_ins (
-  stock_in_id SERIAL PRIMARY KEY,
-  bill_no TEXT NOT NULL UNIQUE,
-  stock_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  remarks TEXT NOT NULL DEFAULT '',
-  total_amount NUMERIC(12, 2) NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS stock_in_items (
-  stock_in_item_id SERIAL PRIMARY KEY,
-  stock_in_id INTEGER NOT NULL REFERENCES stock_ins(stock_in_id) ON DELETE CASCADE,
-  item_id INTEGER NOT NULL,
-  item_name TEXT NOT NULL,
-  quantity NUMERIC(12, 3) NOT NULL DEFAULT 0,
-  unit_price NUMERIC(12, 2) NOT NULL DEFAULT 0,
-  line_total NUMERIC(12, 2) NOT NULL DEFAULT 0
-);
-
-CREATE INDEX IF NOT EXISTS orders_order_date_idx ON orders(order_date);
-CREATE INDEX IF NOT EXISTS stock_ins_stock_date_idx ON stock_ins(stock_date);
+ALTER TABLE orders ALTER COLUMN order_date SET DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Karachi')::date;
+ALTER TABLE orders ALTER COLUMN order_time SET DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Karachi')::time;
