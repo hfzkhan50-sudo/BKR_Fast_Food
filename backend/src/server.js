@@ -66,23 +66,10 @@ api.get('/orders/item-sales', async (req, res) => { try { const [from, to] = dat
 api.get('/orders/:id', async (req, res) => { try { const order = (await query('SELECT order_id AS "orderId", order_no AS "orderNo", order_date::text AS "orderDate", order_time::text AS "orderTime", customer_name AS "customerName", order_type AS "orderType", payment_type AS "paymentType", subtotal, discount, delivery_charge AS "deliveryCharge", service_charge_percent AS "serviceChargePercent", service_charge AS "serviceCharge", total_amount AS "totalAmount", status FROM orders WHERE order_id = $1', [req.params.id])).rows[0]; if (!order) return res.sendStatus(404); order.items = (await query('SELECT menu_item_id AS "menuItemId", menu_item_name AS "menuItemName", quantity, unit_price AS "unitPrice", line_total AS "lineTotal" FROM order_items WHERE order_id = $1 ORDER BY order_item_id', [req.params.id])).rows; res.json(order); } catch (e) { sendError(res, e); } });
 api.post('/orders', async (req, res) => {
   const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    await client.query("SELECT pg_advisory_xact_lock(hashtext('orders-' || (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Karachi')::date::text))");
-    const b = req.body;
-    const orderNo = await nextOrderNo(client);
-    const order = (await client.query("INSERT INTO orders (order_no, order_date, order_time, customer_name, order_type, payment_type, subtotal, discount, delivery_charge, service_charge_percent, service_charge, total_amount, status) VALUES ($1, (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Karachi')::date, (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Karachi')::time, $2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING order_id AS \"orderId\", order_no AS \"orderNo\"", [orderNo, b.customerName || '', b.orderType || 'Dine In', b.paymentType || 'Cash', number(b.subtotal), number(b.discount), number(b.deliveryCharge), number(b.serviceChargePercent), number(b.serviceCharge), number(b.totalAmount), b.status || 'Completed'])).rows[0];
-    for (const item of b.items || []) {
-      const qty = number(item.quantity, 1);
-      await client.query('INSERT INTO order_items (order_id, menu_item_id, menu_item_name, quantity, unit_price, line_total) VALUES ($1,$2,$3,$4,$5,$6)', [order.orderId, item.menuItemId || 0, item.menuItemName || '', qty, number(item.unitPrice), number(item.lineTotal)]);
-      // Deduct sold quantity from any inventory item with the same name (e.g. drinks: Regular, 1 Ltr, 1.5 Ltr)
-      if (qty > 0 && item.menuItemName) {
+  try { await client.query('BEGIN'); const b = req.body; const order = (await client.query('INSERT INTO orders (order_no, customer_name, order_type, payment_type, subtotal, discount, delivery_charge, service_charge_percent, service_charge, total_amount, status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING order_id AS "orderId"', [b.orderNo, b.customerName || '', b.orderType || 'Dine In', b.paymentType || 'Cash', number(b.subtotal), number(b.discount), number(b.deliveryCharge), number(b.serviceChargePercent), number(b.serviceCharge), number(b.totalAmount), b.status || 'Completed'])).rows[0]; for (const item of b.items || []) await client.query('INSERT INTO order_items (order_id, menu_item_id, menu_item_name, quantity, unit_price, line_total) VALUES ($1,$2,$3,$4,$5,$6)', [order.orderId, item.menuItemId || 0, item.menuItemName || '', number(item.quantity, 1), number(item.unitPrice), number(item.lineTotal)]); await client.query('COMMIT'); res.status(201).json(order); } catch (e) { await client.query('ROLLBACK'); sendError(res, e); } finally { client.release(); }
+if (qty > 0 && item.menuItemName) {
         await client.query('UPDATE inventory_items SET quantity = GREATEST(quantity - $1, 0) WHERE LOWER(BTRIM(item_name)) = LOWER(BTRIM($2))', [qty, item.menuItemName]);
       }
-    }
-    await client.query('COMMIT');
-    res.status(201).json(order);
-  } catch (e) { await client.query('ROLLBACK'); sendError(res, e); } finally { client.release(); }
 });
 
 api.get('/stock-in/generate-no', (_req, res) => res.json({ billNo: `STK-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${String(Date.now()).slice(-4)}` }));
