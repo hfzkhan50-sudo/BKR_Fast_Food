@@ -35,6 +35,19 @@ const drinkInventoryKey = (value) => {
   if (normalized === 'waterlarge' || normalized === 'largewater') return 'waterlarge';
   return '';
 };
+const drinkInventorySql = `CASE regexp_replace(LOWER(BTRIM(item_name)), '[^a-z0-9]', '', 'g')
+  WHEN '1ltr' THEN '1ltr'
+  WHEN '1liter' THEN '1ltr'
+  WHEN '1litre' THEN '1ltr'
+  WHEN '15ltr' THEN '15ltr'
+  WHEN '15liter' THEN '15ltr'
+  WHEN '15litre' THEN '15ltr'
+  WHEN 'watersmall' THEN 'watersmall'
+  WHEN 'smallwater' THEN 'watersmall'
+  WHEN 'waterlarge' THEN 'waterlarge'
+  WHEN 'largewater' THEN 'waterlarge'
+  ELSE ''
+END`;
 const dateRange = (req) => [req.query.from || req.query.startDate || req.query.date || '1900-01-01', req.query.to || req.query.endDate || req.query.date || '2999-12-31'];
 const sendError = (res, error) => res.status(error.code === '23505' ? 409 : 500).json({ error: error.message });
 
@@ -113,13 +126,34 @@ const nextOrderNo = async (client = pool) => {
 api.get('/orders/generate-no', async (_req, res) => {
   try { res.json({ orderNo: await nextOrderNo() }); } catch (e) { sendError(res, e); }
 });
-api.get('/orders', async (req, res) => { try { const [from, to] = dateRange(req); res.json((await query('SELECT order_id AS "orderId", order_no AS "orderNo", order_date::text AS "orderDate", order_time::text AS "orderTime", customer_name AS "customerName", order_type AS "orderType", table_number AS "tableNumber", payment_type AS "paymentType", subtotal, discount, delivery_charge AS "deliveryCharge", service_charge_percent AS "serviceChargePercent", service_charge AS "serviceCharge", total_amount AS "totalAmount", status FROM orders WHERE order_date BETWEEN $1 AND $2 ORDER BY order_date DESC, order_time DESC', [from, to])).rows); } catch (e) { sendError(res, e); } });
-api.get('/orders/range', async (req, res) => { try { const [from, to] = dateRange(req); res.json((await query('SELECT order_id AS "orderId", order_no AS "orderNo", order_date::text AS "orderDate", order_time::text AS "orderTime", customer_name AS "customerName", order_type AS "orderType", table_number AS "tableNumber", payment_type AS "paymentType", subtotal, discount, delivery_charge AS "deliveryCharge", service_charge_percent AS "serviceChargePercent", service_charge AS "serviceCharge", total_amount AS "totalAmount", status FROM orders WHERE order_date BETWEEN $1 AND $2 ORDER BY order_date DESC, order_time DESC', [from, to])).rows); } catch (e) { sendError(res, e); } });
-api.get('/orders/sales', async (req, res) => { try { const [from, to] = dateRange(req); const r = await query('SELECT COALESCE(SUM(total_amount),0) AS "totalSales" FROM orders WHERE order_date BETWEEN $1 AND $2', [from, to]); res.json(r.rows[0]); } catch (e) { sendError(res, e); } });
-api.get('/sales/date/:date', async (req, res) => { try { const r = await query('SELECT COALESCE(SUM(total_amount),0) AS "totalSales", COUNT(*)::int AS "orderCount" FROM orders WHERE order_date = $1', [req.params.date]); res.json(r.rows[0]); } catch (e) { sendError(res, e); } });
-api.get('/orders/count', async (req, res) => { try { const [from, to] = dateRange(req); const r = await query('SELECT COUNT(*)::int AS "orderCount" FROM orders WHERE order_date BETWEEN $1 AND $2', [from, to]); res.json(r.rows[0]); } catch (e) { sendError(res, e); } });
-api.get('/orders/item-sales', async (req, res) => { try { const [from, to] = dateRange(req); res.json((await query('SELECT menu_item_name AS "itemName", SUM(quantity)::int AS quantity, SUM(line_total) AS "totalSales" FROM order_items oi JOIN orders o USING (order_id) WHERE o.order_date BETWEEN $1 AND $2 GROUP BY menu_item_name ORDER BY menu_item_name', [from, to])).rows); } catch (e) { sendError(res, e); } });
+api.get('/orders', async (req, res) => { try { const [from, to] = dateRange(req); res.json((await query('SELECT order_id AS "orderId", order_no AS "orderNo", order_date::text AS "orderDate", order_time::text AS "orderTime", customer_name AS "customerName", order_type AS "orderType", table_number AS "tableNumber", payment_type AS "paymentType", subtotal, discount, delivery_charge AS "deliveryCharge", service_charge_percent AS "serviceChargePercent", service_charge AS "serviceCharge", total_amount AS "totalAmount", status FROM orders WHERE order_date BETWEEN $1 AND $2 AND status <> \'Cancelled\' ORDER BY order_date DESC, order_time DESC', [from, to])).rows); } catch (e) { sendError(res, e); } });
+api.get('/orders/range', async (req, res) => { try { const [from, to] = dateRange(req); res.json((await query('SELECT order_id AS "orderId", order_no AS "orderNo", order_date::text AS "orderDate", order_time::text AS "orderTime", customer_name AS "customerName", order_type AS "orderType", table_number AS "tableNumber", payment_type AS "paymentType", subtotal, discount, delivery_charge AS "deliveryCharge", service_charge_percent AS "serviceChargePercent", service_charge AS "serviceCharge", total_amount AS "totalAmount", status FROM orders WHERE order_date BETWEEN $1 AND $2 AND status <> \'Cancelled\' ORDER BY order_date DESC, order_time DESC', [from, to])).rows); } catch (e) { sendError(res, e); } });
+api.get('/orders/cancelled/range', async (req, res) => { try { const [from, to] = dateRange(req); res.json((await query('SELECT order_id AS "orderId", order_no AS "orderNo", order_date::text AS "orderDate", order_time::text AS "orderTime", customer_name AS "customerName", order_type AS "orderType", table_number AS "tableNumber", payment_type AS "paymentType", subtotal, discount, delivery_charge AS "deliveryCharge", service_charge_percent AS "serviceChargePercent", service_charge AS "serviceCharge", total_amount AS "totalAmount", status FROM orders WHERE order_date BETWEEN $1 AND $2 AND status = \'Cancelled\' ORDER BY order_date DESC, order_time DESC', [from, to])).rows); } catch (e) { sendError(res, e); } });
+api.get('/orders/sales', async (req, res) => { try { const [from, to] = dateRange(req); const r = await query('SELECT COALESCE(SUM(total_amount),0) AS "totalSales" FROM orders WHERE order_date BETWEEN $1 AND $2 AND status <> \'Cancelled\'', [from, to]); res.json(r.rows[0]); } catch (e) { sendError(res, e); } });
+api.get('/orders/cancelled/sales', async (req, res) => { try { const [from, to] = dateRange(req); const r = await query('SELECT COALESCE(SUM(total_amount),0) AS "totalSales" FROM orders WHERE order_date BETWEEN $1 AND $2 AND status = \'Cancelled\'', [from, to]); res.json(r.rows[0]); } catch (e) { sendError(res, e); } });
+api.get('/sales/date/:date', async (req, res) => { try { const r = await query('SELECT COALESCE(SUM(total_amount),0) AS "totalSales", COUNT(*)::int AS "orderCount" FROM orders WHERE order_date = $1 AND status <> \'Cancelled\'', [req.params.date]); res.json(r.rows[0]); } catch (e) { sendError(res, e); } });
+api.get('/orders/count', async (req, res) => { try { const [from, to] = dateRange(req); const r = await query('SELECT COUNT(*)::int AS "orderCount" FROM orders WHERE order_date BETWEEN $1 AND $2 AND status <> \'Cancelled\'', [from, to]); res.json(r.rows[0]); } catch (e) { sendError(res, e); } });
+api.get('/orders/item-sales', async (req, res) => { try { const [from, to] = dateRange(req); res.json((await query('SELECT menu_item_name AS "itemName", SUM(quantity)::int AS quantity, SUM(line_total) AS "totalSales" FROM order_items oi JOIN orders o USING (order_id) WHERE o.order_date BETWEEN $1 AND $2 AND o.status <> \'Cancelled\' GROUP BY menu_item_name ORDER BY menu_item_name', [from, to])).rows); } catch (e) { sendError(res, e); } });
 api.get('/orders/:id', async (req, res) => { try { const order = (await query('SELECT order_id AS "orderId", order_no AS "orderNo", order_date::text AS "orderDate", order_time::text AS "orderTime", customer_name AS "customerName", order_type AS "orderType", table_number AS "tableNumber", payment_type AS "paymentType", subtotal, discount, delivery_charge AS "deliveryCharge", service_charge_percent AS "serviceChargePercent", service_charge AS "serviceCharge", total_amount AS "totalAmount", status FROM orders WHERE order_id = $1', [req.params.id])).rows[0]; if (!order) return res.sendStatus(404); order.items = (await query('SELECT menu_item_id AS "menuItemId", menu_item_name AS "menuItemName", quantity, unit_price AS "unitPrice", line_total AS "lineTotal" FROM order_items WHERE order_id = $1 ORDER BY order_item_id', [req.params.id])).rows; res.json(order); } catch (e) { sendError(res, e); } });
+api.post('/orders/:id/cancel', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const order = (await client.query('SELECT order_id, status FROM orders WHERE order_id = $1 FOR UPDATE', [req.params.id])).rows[0];
+    if (!order) { await client.query('ROLLBACK'); return res.sendStatus(404); }
+    if (order.status === 'Cancelled') { await client.query('ROLLBACK'); return res.status(409).json({ error: 'This order is already cancelled.' }); }
+    const items = (await client.query('SELECT menu_item_name, quantity FROM order_items WHERE order_id = $1', [req.params.id])).rows;
+    for (const item of items) {
+      const drinkKey = drinkInventoryKey(item.menu_item_name);
+      if (drinkKey && number(item.quantity) > 0) {
+        await client.query(`UPDATE inventory_items SET quantity = quantity + $1 WHERE ${drinkInventorySql} = $2`, [number(item.quantity), drinkKey]);
+      }
+    }
+    const result = (await client.query("UPDATE orders SET status = 'Cancelled' WHERE order_id = $1 RETURNING order_id AS \"orderId\", status", [req.params.id])).rows[0];
+    await client.query('COMMIT');
+    res.json(result);
+  } catch (e) { await client.query('ROLLBACK'); sendError(res, e); } finally { client.release(); }
+});
 api.post('/orders', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -134,23 +168,7 @@ api.post('/orders', async (req, res) => {
       // Only bottled drinks and water reduce inventory; other menu items are not stock-tracked here.
       const drinkKey = drinkInventoryKey(item.menuItemName);
       if (qty > 0 && drinkKey) {
-        await client.query(`
-          UPDATE inventory_items
-          SET quantity = GREATEST(quantity - $1, 0)
-          WHERE CASE regexp_replace(LOWER(BTRIM(item_name)), '[^a-z0-9]', '', 'g')
-            WHEN '1ltr' THEN '1ltr'
-            WHEN '1liter' THEN '1ltr'
-            WHEN '1litre' THEN '1ltr'
-            WHEN '15ltr' THEN '15ltr'
-            WHEN '15liter' THEN '15ltr'
-            WHEN '15litre' THEN '15ltr'
-            WHEN 'watersmall' THEN 'watersmall'
-            WHEN 'smallwater' THEN 'watersmall'
-            WHEN 'waterlarge' THEN 'waterlarge'
-            WHEN 'largewater' THEN 'waterlarge'
-            ELSE ''
-          END = $2
-        `, [qty, drinkKey]);
+        await client.query(`UPDATE inventory_items SET quantity = GREATEST(quantity - $1, 0) WHERE ${drinkInventorySql} = $2`, [qty, drinkKey]);
       }
     }
     await client.query('COMMIT');
