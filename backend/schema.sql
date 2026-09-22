@@ -85,6 +85,8 @@ CREATE TABLE IF NOT EXISTS stock_in_items (
 CREATE INDEX IF NOT EXISTS orders_order_date_idx ON orders(order_date);
 CREATE INDEX IF NOT EXISTS stock_ins_stock_date_idx ON stock_ins(stock_date);
 
+DROP INDEX IF EXISTS menu_items_variant_unique_idx;
+
 WITH duplicate_pizza_prices AS (
   SELECT menu_item_id,
          ROW_NUMBER() OVER (
