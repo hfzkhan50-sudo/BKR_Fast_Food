@@ -26,6 +26,15 @@ const query = (text, values = []) => {
 };
 
 const number = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
+const normalizeDrinkName = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const drinkInventoryKey = (value) => {
+  const normalized = normalizeDrinkName(value);
+  if (normalized === '1ltr' || normalized === '1liter' || normalized === '1litre') return '1ltr';
+  if (normalized === '15ltr' || normalized === '15liter' || normalized === '15litre') return '15ltr';
+  if (normalized === 'watersmall' || normalized === 'smallwater') return 'watersmall';
+  if (normalized === 'waterlarge' || normalized === 'largewater') return 'waterlarge';
+  return '';
+};
 const dateRange = (req) => [req.query.from || req.query.startDate || req.query.date || '1900-01-01', req.query.to || req.query.endDate || req.query.date || '2999-12-31'];
 const sendError = (res, error) => res.status(error.code === '23505' ? 409 : 500).json({ error: error.message });
 
@@ -122,9 +131,26 @@ api.post('/orders', async (req, res) => {
     for (const item of b.items || []) {
       const qty = number(item.quantity, 1);
       await client.query('INSERT INTO order_items (order_id, menu_item_id, menu_item_name, quantity, unit_price, line_total) VALUES ($1,$2,$3,$4,$5,$6)', [order.orderId, item.menuItemId || 0, item.menuItemName || '', qty, number(item.unitPrice), number(item.lineTotal)]);
-      // Deduct sold quantity from any inventory item with the same name (e.g. drinks: Regular, 1 Ltr, 1.5 Ltr)
-      if (qty > 0 && item.menuItemName) {
-        await client.query('UPDATE inventory_items SET quantity = GREATEST(quantity - $1, 0) WHERE LOWER(BTRIM(item_name)) = LOWER(BTRIM($2))', [qty, item.menuItemName]);
+      // Only bottled drinks and water reduce inventory; other menu items are not stock-tracked here.
+      const drinkKey = drinkInventoryKey(item.menuItemName);
+      if (qty > 0 && drinkKey) {
+        await client.query(`
+          UPDATE inventory_items
+          SET quantity = GREATEST(quantity - $1, 0)
+          WHERE CASE regexp_replace(LOWER(BTRIM(item_name)), '[^a-z0-9]', '', 'g')
+            WHEN '1ltr' THEN '1ltr'
+            WHEN '1liter' THEN '1ltr'
+            WHEN '1litre' THEN '1ltr'
+            WHEN '15ltr' THEN '15ltr'
+            WHEN '15liter' THEN '15ltr'
+            WHEN '15litre' THEN '15ltr'
+            WHEN 'watersmall' THEN 'watersmall'
+            WHEN 'smallwater' THEN 'watersmall'
+            WHEN 'waterlarge' THEN 'waterlarge'
+            WHEN 'largewater' THEN 'waterlarge'
+            ELSE ''
+          END = $2
+        `, [qty, drinkKey]);
       }
     }
     await client.query('COMMIT');
