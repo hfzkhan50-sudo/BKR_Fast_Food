@@ -29,6 +29,8 @@ const number = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(
 const normalizeDrinkName = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const drinkInventoryKey = (value) => {
   const normalized = normalizeDrinkName(value);
+  if (normalized === 'regular') return 'regular';
+  if (normalized === 'tenpack') return 'tenpack';
   if (normalized === '1ltr' || normalized === '1liter' || normalized === '1litre') return '1ltr';
   if (normalized === '15ltr' || normalized === '15liter' || normalized === '15litre') return '15ltr';
   if (normalized === 'watersmall' || normalized === 'smallwater') return 'watersmall';
@@ -36,6 +38,8 @@ const drinkInventoryKey = (value) => {
   return '';
 };
 const drinkInventorySql = `CASE regexp_replace(LOWER(BTRIM(item_name)), '[^a-z0-9]', '', 'g')
+  WHEN 'regular' THEN 'regular'
+  WHEN 'tenpack' THEN 'tenpack'
   WHEN '1ltr' THEN '1ltr'
   WHEN '1liter' THEN '1ltr'
   WHEN '1litre' THEN '1ltr'
