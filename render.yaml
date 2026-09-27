@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: bkr-fastfood-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bkr-fastfood-db
+          property: connectionString
+
+databases:
+  - name: bkr-fastfood-db
+    plan: free
