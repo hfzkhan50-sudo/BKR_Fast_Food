@@ -120,7 +120,7 @@ const inventoryNameVariants = (value) => {
   const variants = new Set([raw]);
   const lower = raw.toLowerCase();
   const compact = lower.replace(/[^a-z0-9]+/g, ' ').trim();
-  const withoutUnitCount = compact.replace(/\b\d+\s*(pcs|pc|ltr|ltrs)\b/g, '').trim();
+  const withoutUnitCount = compact.replace(/\b\d+\s*(pcs|pc|ltr|ltrs|litre|liter)\b/g, '').trim();
   const withoutPcs = compact.replace(/\bpcs?\b/g, '').trim();
   const withoutDrink = compact.replace(/\bdrink\b/g, '').trim();
 
@@ -128,16 +128,26 @@ const inventoryNameVariants = (value) => {
     if (item) variants.add(item);
   });
 
-  if (lower.includes('nugget')) {
-    ['nuggets', 'nuggets 10 pcs', 'nuggets 10 pc', 'nuggets 10'].forEach((item) => variants.add(item));
-  }
+  const aliasGroups = [
+    { matches: ['nugget'], values: ['nuggets', 'nuggets 10 pcs', 'nuggets 10 pc', 'nuggets 10', 'chicken nuggets', 'nugget'] },
+    { matches: ['wing'], values: ['wings', 'wing', 'hot wings', 'hot wings 6 pcs', 'wings 6 pcs', 'wings 6', 'chicken wings'] },
+    { matches: ['shwarma', 'shawarma'], values: ['shwarma bread', 'shawarma bread', 'shwarma bread 1', 'shawarma bread 1', 'shwarma', 'shawarma'] },
+    { matches: ['burger bun'], values: ['burger bun', 'burger buns', 'bun', 'burger bun 1'] },
+    { matches: ['paratha roll'], values: ['paratha roll', 'paratha rolls', 'roll', 'paratha'] },
+    { matches: ['wrap'], values: ['wrap', 'wraps', 'chicken wrap'] },
+    { matches: ['chicken thigh'], values: ['chicken thigh', 'chicken thighs', 'thigh'] },
+    { matches: ['chicken patty'], values: ['chicken patty', 'chicken patties', 'patty'] },
+    { matches: ['regular'], values: ['regular', 'regular drink', 'regular 250ml', 'regular 500ml'] },
+    { matches: ['1 ltr', '1 liter', '1 litre'], values: ['1 ltr', '1 litre', '1 liter', '1 ltr drink', '1 litre drink', '1 liter drink'] },
+    { matches: ['1.5 ltr', '1.5 liter', '1.5 litre'], values: ['1.5 ltr', '1.5 litre', '1.5 liter', '1.5 ltr drink', '1.5 litre drink', '1.5 liter drink'] },
+    { matches: ['burger bun'], values: ['burger bun', 'burger buns'] },
+    { matches: ['beef burger'], values: ['beef burger', 'beef burger 1'] }
+  ];
 
-  if (lower.includes('wing')) {
-    ['wings', 'hot wings', 'hot wings 6 pcs', 'wings 6 pcs', 'wings 6'].forEach((item) => variants.add(item));
-  }
-
-  if (lower.includes('burger bun')) {
-    ['burger bun', 'burger buns'].forEach((item) => variants.add(item));
+  for (const group of aliasGroups) {
+    if (group.matches.some((match) => lower.includes(match))) {
+      group.values.forEach((item) => variants.add(item));
+    }
   }
 
   return [...variants].map((item) => item.trim()).filter(Boolean);

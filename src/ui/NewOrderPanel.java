@@ -3,6 +3,7 @@
  */
 package ui;
 
+import dao.InventoryDAO;
 import dao.MenuDAO;
 import dao.OrderDAO;
 import java.awt.BorderLayout;
@@ -58,6 +59,7 @@ public class NewOrderPanel
 extends JPanel {
     private static final List<String> CATEGORY_ORDER = Arrays.asList("Pizza", "Burger", "Chicken Broast", "Hot Wings", "Fries", "Drinks", "Juices", "Deals", "Pasta", "Paratha Roll", "Shawarma", "Wrap", "BKR Special Karahi", "BKR Handi (Boneless)", "BKR Soup (Boneless)", "BKR Naan (Roti)");
     private final MenuDAO menuDAO = new MenuDAO();
+    private final InventoryDAO inventoryDAO = new InventoryDAO();
     private final OrderDAO orderDAO = new OrderDAO();
     private final Runnable onSaved;
     private final LinkedHashMap<String, LinkedHashMap<String, List<MenuItem>>> categorizedItems = new LinkedHashMap<String, LinkedHashMap<String, List<MenuItem>>>();
@@ -79,6 +81,8 @@ extends JPanel {
     private JTable lineTable;
     private JLabel subtotalLabel;
     private JLabel totalLabel;
+    private JLabel lowStockLabel;
+    private JPanel lowStockPanel;
     private List<MenuItem> rawMenuItems = new ArrayList<MenuItem>();
     private final Map<Integer, String> displayedSizes = new LinkedHashMap<Integer, String>();
 
@@ -340,6 +344,17 @@ extends JPanel {
         JPanel jPanel4 = new JPanel(new FlowLayout(2, 15, 0));
         jPanel4.setBackground(UIHelper.PANEL_BG);
 
+        this.lowStockPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 4));
+        this.lowStockPanel.setBackground(UIHelper.PANEL_BG);
+        this.lowStockPanel.setVisible(false);
+        this.lowStockPanel.setBorder(BorderFactory.createEmptyBorder(2, 0, 0, 0));
+
+        this.lowStockLabel = new JLabel();
+        this.lowStockLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
+        this.lowStockLabel.setForeground(new Color(255, 183, 77));
+        this.lowStockLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        this.lowStockPanel.add(this.lowStockLabel);
+
         this.subtotalLabel = new JLabel("Subtotal: Rs. 0.00");
         this.subtotalLabel.setFont(new Font("SansSerif", 1, 14));
         this.subtotalLabel.setForeground(UIHelper.TEXT_MUTED);
@@ -348,19 +363,52 @@ extends JPanel {
         this.totalLabel.setFont(new Font("SansSerif", 1, 22));
         this.totalLabel.setForeground(UIHelper.BKR_GOLD_BRIGHT);
 
-        JButton jButton4 = UIHelper.createButton("Save & Print Bill", UIHelper.BKR_RED, Color.WHITE, 15);
-        jButton4.setPreferredSize(new Dimension(210, 42));
-        jButton4.addActionListener(actionEvent -> this.saveOrder());
+        JButton saveOnlyButton = UIHelper.createButton("Save Only", UIHelper.BKR_RED, Color.WHITE, 15);
+        saveOnlyButton.setPreferredSize(new Dimension(150, 42));
+        saveOnlyButton.addActionListener(actionEvent -> this.saveOrder(false));
 
+        JButton savePrintButton = UIHelper.createButton("Save & Print", UIHelper.BKR_RED, Color.WHITE, 15);
+        savePrintButton.setPreferredSize(new Dimension(180, 42));
+        savePrintButton.addActionListener(actionEvent -> this.saveOrder(true));
+
+        jPanel4.add(this.lowStockPanel);
         jPanel4.add(this.subtotalLabel);
         jPanel4.add(this.totalLabel);
-        jPanel4.add(jButton4);
+        jPanel4.add(saveOnlyButton);
+        jPanel4.add(savePrintButton);
+        this.refreshLowStockWarnings();
 
         jPanel2.add((Component)jPanel3, "Center");
         jPanel2.add((Component)jPanel4, "South");
         jPanel.add((Component)jScrollPane, "Center");
         jPanel.add((Component)jPanel2, "South");
         return jPanel;
+    }
+
+    private void refreshLowStockWarnings() {
+        try {
+            List<model.InventoryItem> lowStockItems = this.inventoryDAO.getLowStockItems();
+            if (lowStockItems == null || lowStockItems.isEmpty()) {
+                this.lowStockPanel.setVisible(false);
+                this.lowStockLabel.setText("");
+                return;
+            }
+
+            StringBuilder text = new StringBuilder("Low Stock: ");
+            for (int i = 0; i < lowStockItems.size(); i++) {
+                model.InventoryItem item = lowStockItems.get(i);
+                if (i > 0) {
+                    text.append("  |  ");
+                }
+                text.append(item.getItemName()).append(" (").append(item.getQuantity()).append(")");
+            }
+            this.lowStockLabel.setText(text.toString());
+            this.lowStockPanel.setVisible(true);
+        }
+        catch (Exception exception) {
+            this.lowStockPanel.setVisible(false);
+            this.lowStockLabel.setText("");
+        }
     }
 
     public void refreshMenuItems() {
@@ -689,6 +737,10 @@ extends JPanel {
     }
 
     private void saveOrder() {
+        saveOrder(true);
+    }
+
+    private void saveOrder(boolean printBill) {
         if (this.lineTableModel.getRowCount() == 0) {
             JOptionPane.showMessageDialog(this, "Add at least one item before saving.", "Nothing to Save", 2);
             return;
@@ -737,7 +789,9 @@ extends JPanel {
             order.setServiceCharge(this.serviceChargeCheck.isSelected() ? bigDecimal : BigDecimal.ZERO);
             order.setTotalAmount(bigDecimal6);
             this.orderDAO.saveOrder(order);
-            BillPrinter.showOrderBill(this, order);
+            if (printBill) {
+                BillPrinter.showOrderBill(this, order);
+            }
             this.lineTableModel.setRowCount(0);
             this.discountField.setText("0");
             this.tableNumberCheck.setSelected(false);
@@ -748,6 +802,7 @@ extends JPanel {
             this.serviceChargeCheck.setSelected(false);
             this.serviceChargeField.setText("0");
             this.recalcTotals();
+            this.refreshLowStockWarnings();
             if (this.onSaved != null) {
                 SwingUtilities.invokeLater(() -> {
                     try {
