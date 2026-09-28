@@ -85,6 +85,50 @@ api.delete('/menu/:id', async (req, res) => { try { await query('DELETE FROM men
 api.get('/inventory', async (req, res) => { try { const search = String(req.query.search || '').trim(); const r = await query(`${inventorySelect} ${search ? 'WHERE item_name ILIKE $1' : ''} ORDER BY item_name`, search ? [`%${search}%`] : []); res.json(r.rows); } catch (e) { sendError(res, e); } });
 api.get('/inventory/low-stock', async (_req, res) => { try { res.json((await query(`${inventorySelect} WHERE quantity <= reorder_level ORDER BY item_name`)).rows); } catch (e) { sendError(res, e); } });
 api.post('/inventory', async (req, res) => { try { const r = await query('INSERT INTO inventory_items (item_name, quantity, reorder_level, last_unit_price) VALUES ($1,$2,$3,$4) RETURNING item_id AS "itemId"', [req.body.itemName || req.body.name || '', number(req.body.quantity), number(req.body.reorderLevel), number(req.body.lastUnitPrice)]); res.status(201).json(r.rows[0]); } catch (e) { sendError(res, e); } });
+api.post('/inventory/adjust', async (req, res) => {
+  const items = Array.isArray(req.body?.items) ? req.body.items : Array.isArray(req.body) ? req.body : [];
+  if (!items.length) return res.status(400).json({ error: 'No inventory adjustments supplied.' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const updated = [];
+    for (const entry of items) {
+      const itemName = String(entry.itemName || entry.name || '').trim();
+      const delta = Number(entry.quantity || 0);
+      if (!itemName || !Number.isFinite(delta)) continue;
+
+      const result = await client.query(
+        `UPDATE inventory_items
+         SET quantity = GREATEST(quantity + $1, 0)
+         WHERE LOWER(BTRIM(item_name)) = LOWER(BTRIM($2))
+         RETURNING item_id AS "itemId", item_name AS "itemName", quantity`,
+        [delta, itemName]
+      );
+
+      if (result.rowCount) {
+        updated.push(result.rows[0]);
+        continue;
+      }
+
+      const created = await client.query(
+        `INSERT INTO inventory_items (item_name, quantity, reorder_level, last_unit_price)
+         VALUES ($1, GREATEST($2, 0), 0, 0)
+         RETURNING item_id AS "itemId", item_name AS "itemName", quantity`,
+        [itemName, delta]
+      );
+      updated.push(created.rows[0]);
+    }
+
+    await client.query('COMMIT');
+    res.json({ updated });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    sendError(res, e);
+  } finally {
+    client.release();
+  }
+});
 api.delete('/inventory/:id', async (req, res) => { try { await query('DELETE FROM inventory_items WHERE item_id = $1', [req.params.id]); res.sendStatus(204); } catch (e) { sendError(res, e); } });
 
 const nextOrderNo = async (client = pool) => {
@@ -195,9 +239,9 @@ const decrementInventory = async (client, item, quantity) => {
     deductions = [['Wrap', 1]];
   } else if (category === 'paratha roll' || (!category && normalizedName.includes('roll'))) {
     deductions = [['Paratha Roll', 1]];
-  } else if (category === 'hot wings' || (!category && normalizedName.includes('nugget'))) {
+  } else if (category === 'hot wings' || (!category && (normalizedName.includes('wing') || normalizedName.includes('nugget')))) {
     deductions = normalizedName.includes('nugget') ? [['Nuggets', 10]] : [['Wings', 6]];
-  } else if (category === 'shawarma' || (!category && normalizedName.includes('shawarma'))) {
+  } else if (category === 'shawarma' || (!category && (normalizedName.includes('shawarma') || normalizedName.includes('shwarma')))) {
     deductions = [['Shwarma Bread', 1]];
   }
 
