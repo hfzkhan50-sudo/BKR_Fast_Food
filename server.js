@@ -147,10 +147,10 @@ const nextOrderNo = async (client = pool) => {
 
 const drinkNames = new Set(['regular', '1 ltr', '1.5 ltr', 'water (small)', 'water (large)', 'ten pack']);
 const dealInventoryRules = [
-  { match: 'family deal', deductions: [['1.5 Ltr', 1], ['Burger Bun', 4], ['Wings', 6], ['Chicken Thigh', 4]] },
-  { match: 'student deal', deductions: [['Regular', 1], ['Burger Bun', 1]] },
-  { match: 'bkr super platter', deductions: [['1 Ltr', 1], ['Nuggets', 10], ['Paratha Roll', 2], ['Burger Bun', 2]] },
-  { match: 'deal 1', deductions: [['1 Ltr', 1], ['Burger Bun', 2]] },
+  { match: 'family deal', deductions: [['1.5 Ltr', 1], ['Wings', 6], ['Chicken Thigh', 4]] },
+  { match: 'student deal', deductions: [['Regular', 1], ['Chicken Patty', 1]] },
+  { match: 'bkr super platter', deductions: [['1 Ltr', 1], ['Nuggets', 10], ['Paratha Roll', 2], ['Chicken Patty', 2]] },
+  { match: 'deal 1', deductions: [['1 Ltr', 1], ['Chicken Thigh', 2]] },
   { match: 'deal 2', deductions: [['1 Ltr', 1]] },
   { match: 'deal 3', deductions: [['1 Ltr', 1], ['Wings', 6]] }
 ];
@@ -175,16 +175,15 @@ const inventoryNameVariants = (value) => {
   const aliasGroups = [
     { matches: ['nugget'], values: ['nuggets', 'nuggets 10 pcs', 'nuggets 10 pc', 'nuggets 10', 'chicken nuggets', 'nugget'] },
     { matches: ['wing'], values: ['wings', 'wing', 'hot wings', 'hot wings 6 pcs', 'wings 6 pcs', 'wings 6', 'chicken wings'] },
-    { matches: ['shwarma', 'shawarma'], values: ['shwarma bread', 'shawarma bread', 'shwarma bread 1', 'shawarma bread 1', 'shwarma', 'shawarma'] },
-    { matches: ['burger bun'], values: ['burger bun', 'burger buns', 'bun', 'burger bun 1'] },
+    { matches: ['shwarma', 'shawarma'], values: ['shawarma bread', 'shwarma bread', 'shwarma bread 1', 'shawarma bread 1', 'shawarma', 'shwarma'] },
     { matches: ['paratha roll'], values: ['paratha roll', 'paratha rolls', 'roll', 'paratha'] },
     { matches: ['wrap'], values: ['wrap', 'wraps', 'chicken wrap'] },
     { matches: ['chicken thigh'], values: ['chicken thigh', 'chicken thighs', 'thigh'] },
     { matches: ['chicken patty'], values: ['chicken patty', 'chicken patties', 'patty'] },
+    { matches: ['beef patty'], values: ['beef patty', 'beef patties', 'beef burger'] },
     { matches: ['regular'], values: ['regular', 'regular drink', 'regular 250ml', 'regular 500ml'] },
     { matches: ['1 ltr', '1 liter', '1 litre'], values: ['1 ltr', '1 litre', '1 liter', '1 ltr drink', '1 litre drink', '1 liter drink'] },
-    { matches: ['1.5 ltr', '1.5 liter', '1.5 litre'], values: ['1.5 ltr', '1.5 litre', '1.5 liter', '1.5 ltr drink', '1.5 litre drink', '1.5 liter drink'] },
-    { matches: ['beef burger'], values: ['beef burger', 'beef burger 1'] }
+    { matches: ['1.5 ltr', '1.5 liter', '1.5 litre'], values: ['1.5 ltr', '1.5 litre', '1.5 liter', '1.5 ltr drink', '1.5 litre drink', '1.5 liter drink'] }
   ];
 
   for (const group of aliasGroups) {
@@ -229,13 +228,15 @@ const decrementInventory = async (client, item, quantity) => {
   } else if (category === 'drinks' || (!category && drinkNames.has(compactName))) {
     deductions = [[item.menuItemName, 1]];
   } else if (category === 'burger' || (!category && (compactName.includes('burger') || compactName.includes('zinger') || compactName.includes('tower') || compactName.includes('patty fatty') || compactName.includes('beef burger') || compactName.includes('crispy burger')))) {
-    deductions = [['Burger Bun', 1]];
+    deductions = [];
     if (compactName.includes('patty fatty') || compactName.includes('beef burger') || compactName.includes('patty burger')) {
-      deductions.push(['Chicken Patty', 1]);
+      deductions.push(['Beef Patty', 1]);
     } else if (compactName.includes('tower burger')) {
       deductions.push(['Chicken Thigh', 2]);
-    } else if (compactName.includes('zinger burger') || compactName.includes('zinger chees') || compactName.includes('bkr special burger') || compactName.includes('crispy burger')) {
+    } else if (compactName.includes('zinger burger') || compactName.includes('zinger chees') || compactName.includes('bkr special burger') || compactName.includes('crispy burger') || compactName.includes('chicken burger')) {
       deductions.push(['Chicken Thigh', 1]);
+    } else if (compactName.includes('burger')) {
+      deductions.push(['Chicken Patty', 1]);
     }
   } else if (category === 'wrap' || (!category && (compactName.includes('wrap') || compactName.includes('fajita wrap') || compactName.includes('tikka wrap')))) {
     deductions = [['Wrap', 1]];
