@@ -28,7 +28,18 @@ final class BillPrinterPatch {
     }
 
     public static void showReportText(Component parent, String title, String text) {
-        JOptionPane.showMessageDialog(parent, new JScrollPane(new javax.swing.JTextArea(text)), title, JOptionPane.INFORMATION_MESSAGE);
+        JEditorPane editor = new JEditorPane("text/plain", text);
+        editor.setEditable(false);
+        editor.setCaretPosition(0);
+        editor.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12));
+        try {
+            HashPrintRequestAttributeSet attributes = new HashPrintRequestAttributeSet();
+            attributes.add(new MediaPrintableArea(1, 1, 78, 270, MediaPrintableArea.MM));
+            attributes.add(OrientationRequested.PORTRAIT);
+            editor.print(null, null, false, null, attributes, false);
+        } catch (PrinterException error) {
+            JOptionPane.showMessageDialog(parent, "Print error: " + error.getMessage(), "Print Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private static void printHtml(Component parent, String html) {

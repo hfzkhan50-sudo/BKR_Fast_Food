@@ -30,7 +30,19 @@ final class BillPrinterPatch {
     }
 
     public static void showReportText(Component component, String string, String string2) {
-        JOptionPane.showMessageDialog(component, new JScrollPane(new JTextArea(string2)), string, 1);
+        JEditorPane jEditorPane = new JEditorPane("text/plain", string2);
+        jEditorPane.setEditable(false);
+        jEditorPane.setCaretPosition(0);
+        jEditorPane.setFont(new java.awt.Font("Monospaced", java.awt.Font.PLAIN, 12));
+        try {
+            HashPrintRequestAttributeSet hashPrintRequestAttributeSet = new HashPrintRequestAttributeSet();
+            hashPrintRequestAttributeSet.add(new MediaPrintableArea(1, 1, 78, 270, 1000));
+            hashPrintRequestAttributeSet.add(OrientationRequested.PORTRAIT);
+            jEditorPane.print(null, null, false, null, hashPrintRequestAttributeSet, false);
+        }
+        catch (PrinterException printerException) {
+            JOptionPane.showMessageDialog(component, "Print error: " + printerException.getMessage(), "Print Error", 0);
+        }
     }
 
     private static void printHtml(Component component, String string) {

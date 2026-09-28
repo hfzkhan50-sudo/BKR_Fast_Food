@@ -792,6 +792,7 @@ extends JPanel {
             if (printBill) {
                 BillPrinter.showOrderBill(this, order);
             }
+            JOptionPane.showMessageDialog(this, "Order saved successfully.", "Saved", JOptionPane.INFORMATION_MESSAGE);
             this.lineTableModel.setRowCount(0);
             this.discountField.setText("0");
             this.tableNumberCheck.setSelected(false);

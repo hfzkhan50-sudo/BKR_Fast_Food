@@ -1,0 +1,12 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Validate inventory rules",
+			"type": "shell",
+			"command": "cd /d \"d:\\BKR Software\" && git status --short && echo --- && git remote -v && echo --- && node --check backend/src/server.js && node - <<'NODE'\nconst tests = [\n  ['Hot Wings 10 Pcs', ''],\n  ['Chicken Shawarma', ''],\n  ['Shwarma', ''],\n  ['Nuggets 10 Pcs', ''],\n  ['Patty Fatty Burger', ''],\n  ['Zinger Burger', ''],\n  ['Family Deal', 'deals']\n];\nfor (const [item, category] of tests) {\n  const normalizedName = item.trim().toLowerCase().replaceAll('-', ' ');\n  let deductions = [];\n  if (category === 'deals') deductions = [['1.5 Ltr',1],['Burger Bun',4],['Wings',6],['Chicken Thigh',4]];\n  else if (category === 'drinks' || (!category && ['regular','1 ltr','1.5 ltr','water (small)','water (large)','ten pack'].includes(normalizedName))) deductions = [[item,1]];\n  else if (category === 'burger' || (!category && normalizedName.includes('burger'))) {\n    deductions = [['Burger Bun',1]];\n    if (normalizedName.includes('patty fatty') || normalizedName === 'beef burger') deductions.push(['Chicken Patty',1]);\n    else if (normalizedName.includes('tower burger')) deductions.push(['Chicken Thigh',2]);\n    else if (normalizedName.includes('zinger burger') || normalizedName.includes('zinger chees burger') || normalizedName.includes('bkr special burger')) deductions.push(['Chicken Thigh',1]);\n  } else if (category === 'wrap' || (!category && normalizedName.includes('wrap'))) deductions = [['Wrap',1]];\n  else if (category === 'paratha roll' || (!category && normalizedName.includes('roll'))) deductions = [['Paratha Roll',1]];\n  else if (category === 'hot wings' || (!category && (normalizedName.includes('wing') || normalizedName.includes('nugget')))) {\n    deductions = normalizedName.includes('nugget') ? [['Nuggets',10]] : [['Wings',6]];\n  } else if (category === 'shawarma' || (!category && (normalizedName.includes('shawarma') || normalizedName.includes('shwarma')))) {\n    deductions = [['Shwarma Bread',1]];\n  }\n  console.log(item + ' => ' + JSON.stringify(deductions));\n}\nNODE",
+			"isBackground": false,
+			"problemMatcher": []
+		}
+	]
+}
