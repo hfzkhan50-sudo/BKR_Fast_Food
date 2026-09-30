@@ -229,7 +229,7 @@ const decrementInventory = async (client, item, quantity) => {
   } else if (category === 'drinks' || (!category && drinkNames.has(compactName))) {
     deductions = [[item.menuItemName, 1]];
   } else if (category === 'burger' || (!category && (compactName.includes('burger') || compactName.includes('zinger') || compactName.includes('tower') || compactName.includes('patty fatty') || compactName.includes('beef burger') || compactName.includes('crispy burger')))) {
-    deductions = [['Burger Bun', 1]];
+    deductions = [['Burger Bun', 2]];
     if (compactName.includes('patty fatty') || compactName.includes('beef burger') || compactName.includes('patty burger')) {
       deductions.push(['Chicken Patty', 1]);
     } else if (compactName.includes('tower burger')) {
