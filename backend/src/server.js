@@ -147,10 +147,10 @@ const nextOrderNo = async (client = pool) => {
 
 const drinkNames = new Set(['regular', '1 ltr', '1.5 ltr', 'water (small)', 'water (large)', 'ten pack']);
 const dealInventoryRules = [
-  { match: 'family deal', deductions: [['1.5 Ltr', 1], ['Burger Bun', 4], ['Wings', 6], ['Chicken Thigh', 4]] },
+  { match: 'family deal', deductions: [['1.5 Ltr', 1], ['Burger Bun', 8], ['Wings', 6], ['Chicken Thigh', 4]] },
   { match: 'student deal', deductions: [['Regular', 1], ['Burger Bun', 1]] },
   { match: 'bkr super platter', deductions: [['1 Ltr', 1], ['Nuggets', 10], ['Paratha Roll', 2], ['Burger Bun', 2]] },
-  { match: 'deal 1', deductions: [['1 Ltr', 1], ['Burger Bun', 2]] },
+  { match: 'deal 1', deductions: [['1 Ltr', 1], ['Burger Bun', 4]] },
   { match: 'deal 2', deductions: [['1 Ltr', 1]] },
   { match: 'deal 3', deductions: [['1 Ltr', 1], ['Wings', 6]] }
 ];
