@@ -232,7 +232,8 @@ const decrementInventory = async (client, item, quantity) => {
     if (compactName.includes('patty fatty') || compactName.includes('beef burger') || compactName.includes('patty burger')) {
       deductions.push(['Beef Patty', 1]);
     } else if (compactName.includes('tower burger')) {
-      deductions.push(['Chicken Thigh', 2]);
+      deductions.push(['Chicken Patty', 1]);
+      deductions.push(['Chicken Thigh', 1]);
     } else if (compactName.includes('zinger burger') || compactName.includes('zinger chees') || compactName.includes('bkr special burger') || compactName.includes('crispy burger') || compactName.includes('chicken burger')) {
       deductions.push(['Chicken Thigh', 1]);
     } else if (compactName.includes('burger')) {
