@@ -151,7 +151,7 @@ const dealInventoryRules = [
   { match: 'student deal', deductions: [['Regular', 1], ['Burger Bun', 1], ['Chicken Patty', 1]] },
   { match: 'bkr super platter', deductions: [['1 Ltr', 1], ['Nuggets', 10], ['Paratha Roll', 2], ['Burger Bun', 2]] },
   { match: 'deal 1', deductions: [['1 Ltr', 1], ['Burger Bun', 2], ['Chicken Thigh', 2]] },
-  { match: 'deal 2', deductions: [['1 Ltr', 1]] },
+  { match: 'deal 2', deductions: [['1 Ltr', 1], ['Chicken Broast', 2]] },
   { match: 'deal 3', deductions: [['1 Ltr', 1], ['Wings', 6]] }
 ];
 
@@ -228,6 +228,14 @@ const decrementInventory = async (client, item, quantity) => {
     deductions = dealInventoryRules.find(({ match }) => compactName.includes(match))?.deductions || [];
   } else if (category === 'drinks' || (!category && drinkNames.has(compactName))) {
     deductions = [[item.menuItemName, 1]];
+  } else if (category === 'chicken broast' || (!category && compactName.includes('broast'))) {
+    if (compactName.includes('full')) {
+      deductions = [['Chicken Broast', 8]];
+    } else if (compactName.includes('half')) {
+      deductions = [['Chicken Broast', 4]];
+    } else if (compactName.includes('quarter')) {
+      deductions = [['Chicken Broast', 2]];
+    }
   } else if (category === 'burger' || (!category && (compactName.includes('burger') || compactName.includes('zinger') || compactName.includes('tower') || compactName.includes('patty fatty') || compactName.includes('beef burger') || compactName.includes('crispy burger')))) {
     deductions = [['Burger Bun', 1]];
     if (compactName.includes('patty fatty') || compactName.includes('beef burger') || compactName.includes('patty burger')) {
